@@ -94,11 +94,11 @@ public class TaskWorkflowService implements ITaskWorkflowService {
                     throw new BadRequestException("Cannot send notification—no recipient email on task " + task.getId());
                 }
 
-                notificationProducer.sendNotification(new NotificationDTO(
-                        task.getEmployee().getEmail(),
-                        "Task reviewed",
-                        "Your task has been marked as IN_PROGRESS by your manager."
-                ));
+//                notificationProducer.sendNotification(new NotificationDTO(
+//                        task.getEmployee().getEmail(),
+//                        "Task reviewed",
+//                        "Your task has been marked as IN_PROGRESS by your manager."
+//                ));
 
             } else {
                 throw new BadRequestException("Invalid transition to IN_PROGRESS.");
@@ -128,11 +128,11 @@ public class TaskWorkflowService implements ITaskWorkflowService {
                 throw new BadRequestException("Cannot send notification—no recipient email on task " + task.getId());
             }
 
-            notificationProducer.sendNotification(new NotificationDTO(
-                    recipient,
-                    "Task reviewed",
-                    "Your task has been marked as DONE by your manager."
-            ));
+//            notificationProducer.sendNotification(new NotificationDTO(
+//                    recipient,
+//                    "Task reviewed",
+//                    "Your task has been marked as DONE by your manager."
+//            ));
         }
 
         Employee employee = employeeRepository.findByEmailAndIsDeletedFalse(userDetails.getEmail());

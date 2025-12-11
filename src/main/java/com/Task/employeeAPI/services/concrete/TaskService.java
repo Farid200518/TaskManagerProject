@@ -14,6 +14,7 @@ import com.Task.employeeAPI.dto.TaskCreateDTO;
 import com.Task.employeeAPI.dto.TaskDTO;
 import com.Task.employeeAPI.exceptions.BadRequestException;
 import com.Task.employeeAPI.exceptions.NotFoundException;
+//import com.Task.employeeAPI.notification.NotificationProducer;
 import com.Task.employeeAPI.notification.NotificationProducer;
 import com.Task.employeeAPI.security.CustomUserDetails;
 import com.Task.employeeAPI.services.abstraction.ITaskService;
@@ -29,7 +30,6 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class TaskService implements ITaskService {
 
     private final TaskRepository taskRepository;
@@ -49,23 +49,34 @@ public class TaskService implements ITaskService {
         if (taskDTO.getEmployeeId() == null)
             throw new BadRequestException("Employee ID must not be null!");
 
+        // Find employee to assign task to
         Employee employee = employeeRepository
                 .findByIdAndIsDeletedFalse(taskDTO.getEmployeeId())
                 .orElseThrow(() -> new NotFoundException(
                         "Employee with ID " + taskDTO.getEmployeeId() + " doesn't exist!"
                 ));
 
-        if (employee.getRole() == Role.HEAD_MANAGER)
+        if (employee.getRole() == Role.HEAD_MANAGER) {
             throw new BadRequestException("Cannot assign tasks to HEAD_MANAGER.");
+        }
 
+        // Find logged-in user (updatedBy)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Object principal = authentication.getPrincipal();
 
-        String email = principal instanceof CustomUserDetails c ?
-                c.getEmail() : principal.toString();
+        String email;
+
+        if (principal instanceof CustomUserDetails customUser) {
+            email = customUser.getEmail();
+        } else if (principal instanceof org.springframework.security.core.userdetails.User springUser) {
+            email = springUser.getUsername();
+        } else {
+            throw new IllegalStateException("Unsupported principal type: " + principal.getClass());
+        }
 
         Employee updatedBy = employeeRepository.findByEmailAndIsDeletedFalse(email);
 
+        // 🔥 MANUAL MAPPING — NO MODELMAPPER FOR INPUT
         Task task = new Task();
         task.setTitle(taskDTO.getTitle());
         task.setDescription(taskDTO.getDescription());
@@ -75,6 +86,7 @@ public class TaskService implements ITaskService {
 
         taskRepository.save(task);
 
+        // Create workflow record
         TaskWorkflow taskWorkflow = new TaskWorkflow();
         taskWorkflow.setTask(task);
         taskWorkflow.setStatus(Status.CREATED);
@@ -82,18 +94,22 @@ public class TaskService implements ITaskService {
         taskWorkflow.setUpdatedBy(updatedBy);
         taskWorkflowRepository.save(taskWorkflow);
 
+        // Send Kafka notification
         notificationProducer.sendNotification(
                 new NotificationDTO(
                         employee.getEmail(),
-                        "You were assigned a new task",
+                        "You were assigned with new task",
                         task.getDescription()
                 )
         );
 
+        // 🔥 OUTPUT: use ModelMapper ONLY for response
         TaskDTO dto = modelMapper.map(task, TaskDTO.class);
         dto.setEmployee(modelMapper.map(employee, EmployeeDTO.class));
+
         return dto;
     }
+
 
 
     @Override
@@ -106,7 +122,6 @@ public class TaskService implements ITaskService {
         dto.setEmployee(modelMapper.map(task.getEmployee(), EmployeeDTO.class));
         return dto;
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -141,26 +156,27 @@ public class TaskService implements ITaskService {
 
     @Override
     public TaskDTO deleteTaskById(Integer id) {
-
         Task task = taskRepository
                 .findById(id)
                 .orElseThrow(() -> new NotFoundException("Task with ID " + id + " doesn't exist!"));
 
-        taskWorkflowRepository.deleteAll(taskWorkflowRepository.findByTask_Id(task.getId()));
-
+        List<TaskWorkflow> workflows = taskWorkflowRepository.findByTask_Id(task.getId());
+        taskWorkflowRepository.deleteAll(workflows);
         taskRepository.delete(task);
         return modelMapper.map(task, TaskDTO.class);
     }
 
-
     @Override
     public TaskDTO updateTaskById(Integer id, TaskDTO taskDTO) {
-        if (taskDTO == null)
+
+        if (taskDTO == null) {
             throw new BadRequestException("Task input must not be null");
+        }
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Task with id " + id + " was not found!"));
 
+        // Employee stays the same — no need to re-query DB
         Employee employee = task.getEmployee();
 
         task.setTitle(taskDTO.getTitle());
@@ -181,5 +197,5 @@ public class TaskService implements ITaskService {
         dto.setEmployee(modelMapper.map(employee, EmployeeDTO.class));
         return dto;
     }
-}
 
+}
