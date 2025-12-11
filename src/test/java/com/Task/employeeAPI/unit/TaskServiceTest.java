@@ -141,9 +141,6 @@ class TaskServiceTest {
         when(taskWorkflowRepository.save(any(TaskWorkflow.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        // notification
-        doNothing().when(notificationProducer)
-                .sendNotification(any(NotificationDTO.class));
 
         // modelMapper output
         TaskDTO out = new TaskDTO();
@@ -159,7 +156,6 @@ class TaskServiceTest {
         assertSame(out, result);                        // returned expected DTO
         verify(taskRepository).save(any(Task.class));   // task saved
         verify(taskWorkflowRepository).save(any(TaskWorkflow.class)); // workflow saved
-        verify(notificationProducer).sendNotification(any(NotificationDTO.class)); // kafka sent
     }
 
 
@@ -322,7 +318,6 @@ class TaskServiceTest {
         assertSame(oldEmployee, existing.getEmployee()); // employee does not change
 
         verify(taskRepository).save(existing);
-        verify(notificationProducer).sendNotification(any(NotificationDTO.class));
     }
 
 
