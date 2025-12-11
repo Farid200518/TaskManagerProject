@@ -3,6 +3,7 @@ import { getEmployeeTasks, changeTaskStatus } from "../api/api";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/Card";
 import { StatusBadge } from "../components/StatusBadge";
+import { PriorityBadge } from "../components/PriorityBadge";
 
 export default function MyTasks() {
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export default function MyTasks() {
           footer={
             <div className="flex items-center justify-between gap-3">
               <StatusBadge status={t.status} />
+              <PriorityBadge priority={t.priority} />
             </div>
           }
         >

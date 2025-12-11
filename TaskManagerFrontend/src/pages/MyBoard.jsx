@@ -3,7 +3,10 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useAuth } from "../context/AuthContext";
 import { getEmployeeTasks, changeTaskStatus } from "../api/api";
 import Card from "../components/Card";
-import { StatusBadge } from "../components/StatusBadge";
+import { StatusBadge,  } from "../components/StatusBadge";
+import { PriorityBadge } from "../components/PriorityBadge";
+
+
 
 const STATUS_ORDER = ["CREATED", "IN_PROGRESS", "RESOLVED", "DONE"];
 const STATUS_LABELS = {
@@ -114,28 +117,33 @@ export default function MyBoard() {
 
                   <div className="space-y-2 flex-1">
                     {tasksByStatus(status).map((task, index) => (
-                      <Draggable
-                        key={task.id}
-                        draggableId={String(task.id)}
-                        index={index}
-                      >
-                        {(providedDrag) => (
-                          <div
-                            ref={providedDrag.innerRef}
-                            {...providedDrag.draggableProps}
-                            {...providedDrag.dragHandleProps}
-                          >
-                            <Card
-                              title={task.title || `Task #${task.id}`}
-                              footer={<StatusBadge status={task.status} />}
-                            >
-                              <p className="text-xs text-slate-300 mb-2">
-                                {task.description}
-                              </p>
-                            </Card>
-                          </div>
-                        )}
-                      </Draggable>
+                        <Draggable
+                            key={task.id}
+                            draggableId={String(task.id)}
+                            index={index}
+                        >
+                          {(providedDrag) => (
+                              <div
+                                  ref={providedDrag.innerRef}
+                                  {...providedDrag.draggableProps}
+                                  {...providedDrag.dragHandleProps}
+                              >
+                                <Card
+                                    title={task.title || `Task #${task.id}`}
+                                    footer={
+                                      <div className="flex items-center justify-between gap-2">
+                                        <StatusBadge status={task.status} />
+                                        <PriorityBadge priority={task.priority} />
+                                      </div>
+                                    }
+                                >
+                                  <p className="text-xs text-slate-300 mb-2">
+                                    {task.description}
+                                  </p>
+                                </Card>
+                              </div>
+                          )}
+                        </Draggable>
                     ))}
                     {provided.placeholder}
                     {tasksByStatus(status).length === 0 && (
