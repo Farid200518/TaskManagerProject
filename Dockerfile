@@ -7,5 +7,10 @@ RUN gradle build -x test
 # 2. Runtime stage
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
+
+# expose port for Render
+EXPOSE 8080
+
 COPY --from=builder /home/app/build/libs/*.jar app.jar
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

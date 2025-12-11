@@ -4,7 +4,6 @@ import com.Task.employeeAPI.dto.NotificationDTO;
 import com.Task.employeeAPI.exceptions.BadRequestException;
 import com.Task.employeeAPI.services.concrete.EmailService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,13 +12,13 @@ public class NotificationConsumer {
 
     private final EmailService emailService;
 
-    @KafkaListener(topics = "email-topic", groupId = "email-group", containerFactory = "kafkaListenerContainerFactory")
-    public void consume(NotificationDTO dto) {
+    // Fake method, called manually if needed
+    public void process(NotificationDTO dto) {
         if (dto.getEmail() == null) {
-             throw new BadRequestException("Email is null!");
+            throw new BadRequestException("Email is null!");
         }
+
+        // Direct call — no Kafka needed
         emailService.sendEmail(dto.getEmail(), dto.getSubject(), dto.getBody());
     }
 }
-
-
