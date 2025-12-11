@@ -158,7 +158,6 @@ class TaskWorkflowServiceTest {
 
         when(taskRepository.findById(1)).thenReturn(Optional.of(task));
         when(employeeRepository.findByEmailAndIsDeletedFalse(any())).thenReturn(employee);
-        doNothing().when(notificationProducer).sendNotification(any(NotificationDTO.class)); // ✅ stub notification
 
         TaskWorkflowPayload result = taskWorkflowService.setStatus(payload);
 
@@ -184,7 +183,6 @@ class TaskWorkflowServiceTest {
 
         when(taskRepository.findById(1)).thenReturn(Optional.of(task));
         when(employeeRepository.findByEmailAndIsDeletedFalse(any())).thenReturn(employee);
-        doNothing().when(notificationProducer).sendNotification(any(NotificationDTO.class)); // ✅ stub notification
 
         TaskWorkflowPayload result = taskWorkflowService.setStatus(payload);
 
