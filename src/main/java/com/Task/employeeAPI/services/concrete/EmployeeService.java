@@ -25,10 +25,13 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class EmployeeService implements IEmployeeService {
 
     private final EmployeeRepository employeeRepository;
@@ -43,10 +46,8 @@ public class EmployeeService implements IEmployeeService {
     @Override
     public AuthResponseDTO signup(EmployeeDTO employeeDTO) {
 
-        Employee existingByEmail = employeeRepository.findByEmailAndIsDeletedFalse(employeeDTO.getEmail());
-        if (existingByEmail != null) {
+        if (employeeRepository.findByEmailAndIsDeletedFalse(employeeDTO.getEmail()) != null)
             throw new BadRequestException("Email already exists");
-        }
 
         Employee employee = Employee.builder()
                 .name(employeeDTO.getName())
@@ -58,10 +59,8 @@ public class EmployeeService implements IEmployeeService {
 
         employeeRepository.save(employee);
 
-        // Generate JWT using their email (or ID if you want)
         String token = jwtTokenUtil.generateToken(employee.getEmail());
 
-        // Create response object
         AuthResponseDTO.UserInfo userInfo = new AuthResponseDTO.UserInfo(
                 employee.getId(),
                 employee.getName() + " " + employee.getSurname(),
@@ -74,107 +73,108 @@ public class EmployeeService implements IEmployeeService {
 
 
     @Override
-    public AuthResponseDTO login(EmployeeLoginDTO employeeLoginDTO) {
+    @Transactional(readOnly = true)
+    public AuthResponseDTO login(EmployeeLoginDTO dto) {
+
         try {
-            Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            employeeLoginDTO.getEmail(),
-                            employeeLoginDTO.getPassword()
-                    )
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(dto.getEmail(), dto.getPassword())
             );
-
-            Employee employee = employeeRepository.findByEmailAndIsDeletedFalse(employeeLoginDTO.getEmail());
-            if (employee == null) {
-                throw new com.Task.employeeAPI.exceptions.BadCredentialsException("Invalid email or password");
-            }
-
-            String token = jwtTokenUtil.generateToken(employee.getEmail());
-
-            AuthResponseDTO.UserInfo userInfo = new AuthResponseDTO.UserInfo(
-                    employee.getId(),
-                    employee.getName() + " " + employee.getSurname(),
-                    employee.getEmail(),
-                    employee.getRole().name()
-            );
-
-            return new AuthResponseDTO(token, userInfo);
-
         } catch (AuthenticationException ex) {
-            throw new com.Task.employeeAPI.exceptions.BadCredentialsException("Invalid email or password");
+            throw new BadRequestException("Invalid email or password");
         }
+
+        Employee employee = employeeRepository.findByEmailAndIsDeletedFalse(dto.getEmail());
+
+        if (employee == null)
+            throw new BadRequestException("Invalid email or password");
+
+        String token = jwtTokenUtil.generateToken(employee.getEmail());
+
+        AuthResponseDTO.UserInfo userInfo = new AuthResponseDTO.UserInfo(
+                employee.getId(),
+                employee.getName() + " " + employee.getSurname(),
+                employee.getEmail(),
+                employee.getRole().name()
+        );
+
+        return new AuthResponseDTO(token, userInfo);
     }
 
 
     @Override
     public EmployeeDTO createEmployee(EmployeeDTO employeeDTO) {
-        if (employeeDTO == null) {
+
+        if (employeeDTO == null)
             throw new BadRequestException("Employee input must not be null");
-        }
 
-        Employee existingByEmail = employeeRepository.findByEmailAndIsDeletedFalse(employeeDTO.getEmail());
-
-        if (existingByEmail != null) {
-            throw new BadRequestException("Email or username already exists");
-        }
+        if (employeeRepository.findByEmailAndIsDeletedFalse(employeeDTO.getEmail()) != null)
+            throw new BadRequestException("Email already exists");
 
         Employee employee = modelMapper.map(employeeDTO, Employee.class);
         employee.setPassword(passwordEncoder.encode(employee.getPassword()));
+
         employeeRepository.save(employee);
+
         return modelMapper.map(employee, EmployeeDTO.class);
     }
 
+
     @Override
+    @Transactional(readOnly = true)
     public EmployeeDTO findEmployeeById(Integer id) {
         Employee employee = employeeMapper.findEmployeeById(id);
 
-        if (employee == null) {
+        if (employee == null)
             throw new NotFoundException("Employee with ID " + id + " was not found!");
-        }
 
         return modelMapper.map(employee, EmployeeDTO.class);
     }
 
+
     @Override
+    @Transactional(readOnly = true)
     public List<EmployeeDTO> findAll() {
-        return employeeRepository
-                .findByIsDeletedFalse()
+        return employeeRepository.findByIsDeletedFalse()
                 .stream()
-                .map(employee -> modelMapper.map(employee, EmployeeDTO.class))
+                .map(e -> modelMapper.map(e, EmployeeDTO.class))
                 .toList();
     }
 
+
     @Override
     public EmployeeDTO deleteEmployeeById(Integer id) {
-        Employee employee = employeeRepository
-                .findById(id)
-                .orElseThrow(() -> new NotFoundException("Employee with  ID " + id + " doesn't exist!"));
+
+        Employee employee = employeeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
 
         employee.setDeleted(true);
-        List<Task> tasks = taskRepository.findByEmployee_id(employee.getId());
+
+        List<Task> tasks = taskRepository.findByEmployee_id(id);
         for (Task task : tasks) {
-            List<TaskWorkflow> workflows = taskWorkflowRepository.findByTask_Id(task.getId());
-            taskWorkflowRepository.deleteAll(workflows);
-            taskRepository.deleteById(task.getId());
+            taskWorkflowRepository.deleteAll(taskWorkflowRepository.findByTask_Id(task.getId()));
+            taskRepository.delete(task);
         }
+
         employeeRepository.save(employee);
         return modelMapper.map(employee, EmployeeDTO.class);
     }
 
+
     @Override
-    public EmployeeDTO updateEmployeeById(Integer id, EmployeeUpdateDTO employeeDTO) {
-        if (employeeDTO == null) {
+    public EmployeeDTO updateEmployeeById(Integer id, EmployeeUpdateDTO dto) {
+
+        if (dto == null)
             throw new BadRequestException("Employee input must not be null");
-        }
 
+        Employee employee = employeeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
 
-        Employee employee = employeeRepository
-                .findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("Employee with  ID " + id + " doesn't exist!"));
+        employee.setName(dto.getName());
+        employee.setSurname(dto.getSurname());
 
-
-        employee.setName(employeeDTO.getName());
-        employee.setSurname(employeeDTO.getSurname());
         employeeRepository.save(employee);
         return modelMapper.map(employee, EmployeeDTO.class);
     }
 }
+
