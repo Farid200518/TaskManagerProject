@@ -1,16 +1,37 @@
-# 1. Build stage
-FROM gradle:8.5-jdk21 AS builder
-WORKDIR /home/app
-COPY . .
-RUN gradle build -x test
+###############################################
+# 1. Build frontend (React + Vite)
+###############################################
+FROM node:20 AS frontend-builder
+WORKDIR /app/frontend
 
-# 2. Runtime stage
-FROM eclipse-temurin:21-jdk
+COPY TaskManagerFrontend/package*.json ./
+RUN npm install
+
+COPY TaskManagerFrontend .
+RUN npm run build
+
+###############################################
+# 2. Build backend (Spring Boot + Gradle)
+###############################################
+FROM gradle:8.5-jdk21 AS backend-builder
 WORKDIR /app
 
-# expose port for Render
+# Copy backend project (root)
+COPY . .
+
+# Copy frontend build into Spring Boot static folder
+COPY --from=frontend-builder /app/frontend/dist ./src/main/resources/static/
+
+RUN gradle clean bootJar --no-daemon
+
+###############################################
+# 3. Final runtime image
+###############################################
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
 EXPOSE 8080
 
-COPY --from=builder /home/app/build/libs/*.jar app.jar
+COPY --from=backend-builder /app/build/libs/*.jar app.jar
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
