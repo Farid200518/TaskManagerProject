@@ -5,10 +5,15 @@ FROM node:20 AS frontend-builder
 WORKDIR /app/frontend
 
 COPY TaskManagerFrontend/package*.json ./
-RUN npm install
+
+# Install dependencies INCLUDING devDependencies (important for Vite!)
+RUN npm ci --include=dev
 
 COPY TaskManagerFrontend .
+
+# Now Vite exists -> build succeeds
 RUN npm run build
+
 
 ###############################################
 # 2. Build backend (Spring Boot + Gradle)
