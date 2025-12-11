@@ -1,6 +1,7 @@
 package com.Task.employeeAPI.integration;
 
 
+import com.Task.employeeAPI.EmployeeApiApplication;
 import com.Task.employeeAPI.dao.Entity.Employee;
 import com.Task.employeeAPI.dao.Enums.Role;
 import com.Task.employeeAPI.dao.Repository.EmployeeRepository;
@@ -23,11 +24,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@SpringBootTest(classes = {EmployeeApiApplication.class})
 @ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Transactional
 class EmployeeIntegrationTest {
+
 
     @Autowired
     private MockMvc mockMvc;
