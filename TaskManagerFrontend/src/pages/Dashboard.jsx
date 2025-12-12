@@ -16,12 +16,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card title="Tasks">
-          <p className="text-slate-300 text-sm">
-            Track, update and follow the lifecycle of tasks assigned in your
-            team.
-          </p>
-        </Card>
         <Card title="People">
           <p className="text-slate-300 text-sm">
             View and manage employees depending on your role in the
