@@ -4,15 +4,24 @@
 FROM node:20 AS frontend-builder
 WORKDIR /app/frontend
 
+# 1️⃣ Copy dependency files first (cache)
 COPY TaskManagerFrontend/package*.json ./
-RUN npm ci --include=dev
 
+# 2️⃣ Faster, cached install
+RUN npm ci --prefer-offline --no-audit --no-fund
+
+# 3️⃣ Copy rest of frontend
 COPY TaskManagerFrontend .
 
-# Fix vite permission issue
+# 4️⃣ Fix vite permission issue
 RUN chmod +x node_modules/.bin/vite
 
+# 5️⃣ Prevent slow builds / OOM
+ENV NODE_OPTIONS=--max_old_space_size=4096
+
+# 6️⃣ Build
 RUN npm run build
+
 
 
 ###############################################
